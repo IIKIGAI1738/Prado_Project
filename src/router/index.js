@@ -43,6 +43,11 @@ const router = createRouter({
                     name: 'events',
                     component: () => import('@/views/authenticated/eventView.vue'),
                 },
+                  {
+                    path: '/profile',
+                    name: 'profile',
+                    component: import('@/views/authenticated/Profile.vue'),
+                },
               
             ],
         },
