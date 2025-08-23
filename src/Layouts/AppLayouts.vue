@@ -1,7 +1,6 @@
 <script setup>
 import Header from '@/Layouts/Header.vue'
 import Sidebar from '@/Layouts/SideBar.vue'
-
 </script>
 
 <template>
