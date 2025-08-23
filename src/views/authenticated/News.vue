@@ -1,7 +1,77 @@
-<script setup></script>
+<script setup>
+import { ref, onMounted } from 'vue'
+import { db, auth } from '@/config/firebaseConfig'
+import { onAuthStateChanged } from 'firebase/auth'
+import {
+    collection,
+    addDoc,
+    onSnapshot,
+    deleteDoc,
+    doc,
+    updateDoc,
+    serverTimestamp,
+} from 'firebase/firestore'
 
+const currentUser = ref([])
+const posts = ref([])
+const content = ref('')
+
+const createPost = async () => {
+    const user = auth.currentUser
+    console.log('User Details', user)
+    if (!user) {
+        console.log('You must be logged in to post')
+        return
+    }
+
+    if (!content.value.trim()) {
+        console.log('No content')
+        return
+    }
+
+    await addDoc(collection(db, 'posts'), {
+        uid: user.uid,
+        email: user.email,
+        displayname: user.displayName,
+        photoUrl: user.photoURL,
+        content: content.value,
+        like: 0,
+        dislike: 0,
+        reactions: [],
+        likersUid: [],
+        dislikersuid: [],
+        createdAt: serverTimestamp(),
+    })
+
+    content.value = ''
+}
+
+function listenToPosts() {
+    const colRef = collection(db, 'posts')
+    onSnapshot(colRef, (snapshot) => {
+        posts.value = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+        }))
+        console.table(posts.value)
+    })
+}
+
+onMounted(() => {
+    // ✅ Wait for Firebase to restore the user session
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            console.log('User is logged in:', user)
+            currentUser.value = user
+            listenToPosts()
+        } else {
+            console.log('No user logged in')
+            currentUser.value = null
+        }
+    })
+})
+</script>
 <template>
-    <!-- Create Post Box -->
     <div class="bg-white rounded-lg shadow p-4">
         <div class="flex space-x-4">
             <img
@@ -10,6 +80,7 @@
                 class="w-10 h-10 rounded-full"
             />
             <textarea
+                v-model="content"
                 rows="2"
                 placeholder="Share something with your classmates…"
                 class="flex-1 resize-none bg-gray-100 border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -45,6 +116,8 @@
                 Poll
             </button>
             <button
+                @click="createPost"
+                type="button"
                 class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition"
             >
                 Post
@@ -53,7 +126,7 @@
     </div>
     <!-- Sample Post (reused) -->
     <div class="bg-white rounded-lg shadow overflow-hidden">
-        <div class="p-4 flex items-start space-x-3">
+        <div v-for="post in posts" :key="post.id" class="p-4 flex items-start space-x-3">
             <img
                 src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=facearea&facepad=3&w=64&h=64&q=80"
                 alt="User avatar"
@@ -62,8 +135,8 @@
             <div class="flex-1">
                 <div class="flex items-center justify-between">
                     <div>
-                        <h4 class="font-semibold text-gray-800">Jane Doe</h4>
-                        <span class="text-sm text-gray-500">Posted 2 hours ago</span>
+                        <h4 class="font-semibold text-gray-800">Jane Doe</h4>
+                        <span class="text-sm text-gray-500">Posted 2 hours ago</span>
                     </div>
                     <button class="text-gray-400 hover:text-gray-600">
                         <svg
@@ -80,8 +153,7 @@
                     </button>
                 </div>
                 <p class="mt-2 text-gray-700">
-                    Does anyone have resources on linear algebra? I’m struggling with eigenvalues
-                    and eigenvectors. Any help is appreciated!
+                    {{ post.content }}
                 </p>
                 <div class="mt-4 flex items-center space-x-6 text-gray-600">
                     <button class="flex items-center hover:text-indigo-600">
@@ -136,7 +208,7 @@
             </div>
         </div>
         <!-- Comments preview-->
-        <div class="bg-gray-50 border-t border-gray-200 px-4 py-3 space-y-2">
+        <div class="bg-gray-50 border-t px-4 py-3 space-y-2">
             <div class="flex space-x-3">
                 <img
                     src="https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=facearea&facepad=3&w=64&h=64&q=80"
